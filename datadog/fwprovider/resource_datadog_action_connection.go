@@ -1405,60 +1405,49 @@ func connectionModelToUpdateApiRequest(ctx context.Context, plan, oldState conne
 			previousAuth = oldState.HTTP.TokenAuth
 		}
 		httpTokenAuth := datadogV2.NewHTTPTokenAuthUpdate(datadogV2.HTTPTOKENAUTHTYPE_HTTPTOKENAUTH)
-		if !reflect.DeepEqual(plan.HTTP.TokenAuth, previousAuth) {
-			if previousAuth != nil {
-				buildHttpDeletions(plan, oldState, httpTokenAuth)
-			}
-
-			for _, token := range plan.HTTP.TokenAuth.Tokens {
-				if previousAuth != nil && slices.ContainsFunc(previousAuth.Tokens, func(previous *httpConnectionTokenModel) bool {
-					return token.Name.Equal(previous.Name) && reflect.DeepEqual(token, previous)
-				}) {
-					continue
-				}
-				tokenType, err := datadogV2.NewTokenTypeFromValue(token.Type.ValueString())
-				if err != nil {
-					return nil, err
-				}
-				tokenModel := datadogV2.NewHTTPTokenUpdate(token.Name.ValueString(), *tokenType, token.Value.ValueString())
-				httpTokenAuth.Tokens = append(httpTokenAuth.Tokens, *tokenModel)
-			}
-
-			for _, header := range plan.HTTP.TokenAuth.Headers {
-				if previousAuth != nil && slices.ContainsFunc(previousAuth.Headers, func(previous *httpConnectionHeaderModel) bool {
-					return header.Name.Equal(previous.Name) && reflect.DeepEqual(header, previous)
-				}) {
-					continue
-				}
-				headerUpdate := datadogV2.NewHTTPHeaderUpdate(header.Name.ValueString())
-				headerUpdate.SetValue(header.Value.ValueString())
-				httpTokenAuth.Headers = append(httpTokenAuth.Headers, *headerUpdate)
-			}
-
-			for _, urlParam := range plan.HTTP.TokenAuth.URLParameters {
-				if previousAuth != nil && slices.ContainsFunc(previousAuth.URLParameters, func(previous *httpConnectionUrlParameterModel) bool {
-					return urlParam.Name.Equal(previous.Name) && reflect.DeepEqual(urlParam, previous)
-				}) {
-					continue
-				}
-				paramUpdate := datadogV2.NewUrlParamUpdate(urlParam.Name.ValueString())
-				paramUpdate.SetValue(urlParam.Value.ValueString())
-				httpTokenAuth.UrlParameters = append(httpTokenAuth.UrlParameters, *paramUpdate)
-			}
-
-			if previousAuth == nil || !reflect.DeepEqual(plan.HTTP.TokenAuth.Body, previousAuth.Body) {
-				httpTokenAuth.Body = datadogV2.NewHTTPBody()
-				if plan.HTTP.TokenAuth.Body != nil {
-					if !plan.HTTP.TokenAuth.Body.ContentType.IsNull() {
-						httpTokenAuth.Body.SetContentType(plan.HTTP.TokenAuth.Body.ContentType.ValueString())
-					}
-					if !plan.HTTP.TokenAuth.Body.Content.IsNull() {
-						httpTokenAuth.Body.SetContent(plan.HTTP.TokenAuth.Body.Content.ValueString())
-					}
-				}
-			}
-
+		if previousAuth != nil {
+			buildHttpDeletions(plan, oldState, httpTokenAuth)
 		}
+
+		// Unchanged tokens are omitted so secrets entered in the UI are not overwritten.
+		for _, token := range plan.HTTP.TokenAuth.Tokens {
+			if previousAuth != nil && slices.ContainsFunc(previousAuth.Tokens, func(previous *httpConnectionTokenModel) bool {
+				return token.Name.Equal(previous.Name) && reflect.DeepEqual(token, previous)
+			}) {
+				continue
+			}
+			tokenType, err := datadogV2.NewTokenTypeFromValue(token.Type.ValueString())
+			if err != nil {
+				return nil, err
+			}
+			tokenModel := datadogV2.NewHTTPTokenUpdate(token.Name.ValueString(), *tokenType, token.Value.ValueString())
+			httpTokenAuth.Tokens = append(httpTokenAuth.Tokens, *tokenModel)
+		}
+
+		// The API stores sent headers and URL parameters before omitted ones, so send all to keep their order.
+		for _, header := range plan.HTTP.TokenAuth.Headers {
+			headerUpdate := datadogV2.NewHTTPHeaderUpdate(header.Name.ValueString())
+			headerUpdate.SetValue(header.Value.ValueString())
+			httpTokenAuth.Headers = append(httpTokenAuth.Headers, *headerUpdate)
+		}
+
+		for _, urlParam := range plan.HTTP.TokenAuth.URLParameters {
+			paramUpdate := datadogV2.NewUrlParamUpdate(urlParam.Name.ValueString())
+			paramUpdate.SetValue(urlParam.Value.ValueString())
+			httpTokenAuth.UrlParameters = append(httpTokenAuth.UrlParameters, *paramUpdate)
+		}
+
+		// The API clears the stored body when an HTTP credentials update omits it.
+		httpTokenAuth.Body = datadogV2.NewHTTPBody()
+		if plan.HTTP.TokenAuth.Body != nil {
+			if !plan.HTTP.TokenAuth.Body.ContentType.IsNull() {
+				httpTokenAuth.Body.SetContentType(plan.HTTP.TokenAuth.Body.ContentType.ValueString())
+			}
+			if !plan.HTTP.TokenAuth.Body.Content.IsNull() {
+				httpTokenAuth.Body.SetContent(plan.HTTP.TokenAuth.Body.Content.ValueString())
+			}
+		}
+
 		// The API needs the credential type to apply base URL changes without resending tokens.
 		httpIntegration.SetCredentials(datadogV2.HTTPTokenAuthUpdateAsHTTPCredentialsUpdate(httpTokenAuth))
 
@@ -1755,13 +1744,27 @@ func readConnection(authCtx context.Context, api *datadogV2.ActionConnectionApi,
 		connModel.HTTP != nil && connModel.HTTP.TokenAuth != nil {
 		if len(connModel.HTTP.TokenAuth.Tokens) > 0 {
 			// API returned tokens — copy values from state for matching tokens
-			for _, stateToken := range currentState.HTTP.TokenAuth.Tokens {
+			statePositions := make(map[string]int, len(currentState.HTTP.TokenAuth.Tokens))
+			for position, stateToken := range currentState.HTTP.TokenAuth.Tokens {
+				statePositions[stateToken.Name.ValueString()] = position
 				for _, responseToken := range connModel.HTTP.TokenAuth.Tokens {
 					if stateToken.Name.Equal(responseToken.Name) {
 						responseToken.Value = stateToken.Value
 					}
 				}
 			}
+			// The API moves updated tokens to the end in no fixed order; keep the prior order to avoid drift.
+			slices.SortStableFunc(connModel.HTTP.TokenAuth.Tokens, func(a, b *httpConnectionTokenModel) int {
+				aPosition, aKnown := statePositions[a.Name.ValueString()]
+				bPosition, bKnown := statePositions[b.Name.ValueString()]
+				if !aKnown {
+					aPosition = len(statePositions)
+				}
+				if !bKnown {
+					bPosition = len(statePositions)
+				}
+				return aPosition - bPosition
+			})
 		} else {
 			// API did not return tokens — preserve them entirely from state
 			connModel.HTTP.TokenAuth.Tokens = currentState.HTTP.TokenAuth.Tokens
