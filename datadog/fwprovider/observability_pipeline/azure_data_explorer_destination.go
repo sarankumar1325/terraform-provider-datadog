@@ -92,6 +92,8 @@ type AzureDataExplorerBatchModel struct {
 // ExpandAzureDataExplorerDestination converts the Terraform model to the Datadog API model.
 func ExpandAzureDataExplorerDestination(ctx context.Context, id string, inputs types.List, src *AzureDataExplorerDestinationModel) datadogV2.ObservabilityPipelineConfigDestinationItem {
 	dest := datadogV2.NewObservabilityPipelineAzureDataExplorerDestinationWithDefaults()
+	// Leave ingestion mode to the API default until the provider exposes this setting.
+	dest.IngestionMode = nil
 	dest.SetId(id)
 
 	var inputsList []string
