@@ -65,6 +65,7 @@ type destinationModel struct {
 	SyslogNgDestination               []*syslogNgDestinationModel                                      `tfsdk:"syslog_ng"`
 	ElasticsearchDestination          []*elasticsearchDestinationModel                                 `tfsdk:"elasticsearch"`
 	AzureStorageDestination           []*azureStorageDestinationModel                                  `tfsdk:"azure_storage"`
+	AzureDataExplorerDestination      []*observability_pipeline.AzureDataExplorerDestinationModel      `tfsdk:"azure_data_explorer"`
 	MicrosoftSentinelDestination      []*microsoftSentinelDestinationModel                             `tfsdk:"microsoft_sentinel"`
 	GoogleSecopsDestination           []*googleSecopsDestinationModel                                  `tfsdk:"google_secops"`
 	NewRelicDestination               []*newRelicDestinationModel                                      `tfsdk:"new_relic"`
@@ -207,7 +208,7 @@ type processorModel struct {
 	ParseXMLProcessor              []*parseXMLProcessorModel                                     `tfsdk:"parse_xml"`
 	SplitArrayProcessor            []*splitArrayProcessorModel                                   `tfsdk:"split_array"`
 	MetricTagsProcessor            []*metricTagsProcessorModel                                   `tfsdk:"metric_tags"`
-	GenerateMetricsV2Processor     []*generateMetricsProcessorModel                              `tfsdk:"generate_metrics"`
+	GenerateMetricsV2Processor     []*generateMetricsV2ProcessorModel                            `tfsdk:"generate_metrics"`
 	AddMetricTagsProcessor         []*observability_pipeline.AddMetricTagsProcessorModel         `tfsdk:"add_metric_tags"`
 	AggregateProcessor             []*observability_pipeline.AggregateProcessorModel             `tfsdk:"aggregate"`
 	RenameMetricTagsProcessor      []*observability_pipeline.RenameMetricTagsProcessorModel      `tfsdk:"rename_metric_tags"`
@@ -534,6 +535,11 @@ type validTokenFieldToAddModel struct {
 
 type generateMetricsProcessorModel struct {
 	Metrics []generatedMetricModel `tfsdk:"metric"`
+}
+
+type generateMetricsV2ProcessorModel struct {
+	EnabledMetricAggregation types.Bool             `tfsdk:"enabled_metric_aggregation"`
+	Metrics                  []generatedMetricModel `tfsdk:"metric"`
 }
 
 type generatedMetricModel struct {
@@ -1769,7 +1775,6 @@ func (r *observabilityPipelineResource) Schema(_ context.Context, _ resource.Sch
 														listvalidator.SizeAtMost(1),
 													},
 													NestedObject: schema.NestedBlockObject{
-														Attributes: map[string]schema.Attribute{},
 														Blocks: map[string]schema.Block{
 															"metric": schema.ListNestedBlock{
 																Description: "Configuration for generating individual metrics.",
@@ -2184,7 +2189,12 @@ func (r *observabilityPipelineResource) Schema(_ context.Context, _ resource.Sch
 														listvalidator.SizeAtMost(1),
 													},
 													NestedObject: schema.NestedBlockObject{
-														Attributes: map[string]schema.Attribute{},
+														Attributes: map[string]schema.Attribute{
+															"enabled_metric_aggregation": schema.BoolAttribute{
+																Optional:    true,
+																Description: "[Recommended] Indicates whether generated metrics are automatically aggregated and enriched with the `worker_uuid` tag before being sent to the metric destination.",
+															},
+														},
 														Blocks: map[string]schema.Block{
 															"metric": schema.ListNestedBlock{
 																Description: "Configuration for generating individual metrics.",
@@ -2869,6 +2879,7 @@ func (r *observabilityPipelineResource) Schema(_ context.Context, _ resource.Sch
 									"amazon_s3":                 observability_pipeline.AmazonS3DestinationSchema(),
 									"amazon_s3_generic":         observability_pipeline.AmazonS3GenericDestinationSchema(),
 									"amazon_security_lake":      observability_pipeline.AmazonSecurityLakeDestinationSchema(),
+									"azure_data_explorer":       observability_pipeline.AzureDataExplorerDestinationSchema(),
 									"crowdstrike_next_gen_siem": observability_pipeline.CrowdStrikeNextGenSiemDestinationSchema(),
 									"databricks_zerobus":        observability_pipeline.DatabricksZerobusDestinationSchema(),
 									"splunk_hec_metrics":        observability_pipeline.SplunkHECMetricsDestinationSchema(),
@@ -3222,6 +3233,9 @@ func expandPipeline(ctx context.Context, state *observabilityPipelineModel) (*da
 		for _, d := range dest.AmazonSecurityLakeDestination {
 			config.Destinations = append(config.Destinations, observability_pipeline.ExpandObservabilityPipelinesAmazonSecurityLakeDestination(ctx, dest.Id.ValueString(), dest.Inputs, d))
 		}
+		for _, d := range dest.AzureDataExplorerDestination {
+			config.Destinations = append(config.Destinations, observability_pipeline.ExpandAzureDataExplorerDestination(ctx, dest.Id.ValueString(), dest.Inputs, d))
+		}
 		for _, d := range dest.CrowdStrikeNextGenSiemDestination {
 			config.Destinations = append(config.Destinations, observability_pipeline.ExpandCrowdStrikeNextGenSiemDestination(ctx, dest.Id.ValueString(), dest.Inputs, d))
 		}
@@ -3474,6 +3488,11 @@ func flattenPipeline(ctx context.Context, state *observabilityPipelineModel, res
 			destBlock.Id = types.StringValue(d.ObservabilityPipelineAmazonSecurityLakeDestination.GetId())
 			destBlock.Inputs, _ = types.ListValueFrom(ctx, types.StringType, d.ObservabilityPipelineAmazonSecurityLakeDestination.GetInputs())
 			destBlock.AmazonSecurityLakeDestination = append(destBlock.AmazonSecurityLakeDestination, securitylake)
+			outCfg.Destinations = append(outCfg.Destinations, destBlock)
+		} else if adx := observability_pipeline.FlattenAzureDataExplorerDestination(ctx, d.ObservabilityPipelineAzureDataExplorerDestination); adx != nil {
+			destBlock.Id = types.StringValue(d.ObservabilityPipelineAzureDataExplorerDestination.GetId())
+			destBlock.Inputs, _ = types.ListValueFrom(ctx, types.StringType, d.ObservabilityPipelineAzureDataExplorerDestination.GetInputs())
+			destBlock.AzureDataExplorerDestination = append(destBlock.AzureDataExplorerDestination, adx)
 			outCfg.Destinations = append(outCfg.Destinations, destBlock)
 		} else if crowdstrike := observability_pipeline.FlattenCrowdStrikeNextGenSiemDestination(ctx, d.ObservabilityPipelineCrowdStrikeNextGenSiemDestination); crowdstrike != nil {
 			destBlock.Id = types.StringValue(d.ObservabilityPipelineCrowdStrikeNextGenSiemDestination.GetId())
@@ -5339,7 +5358,12 @@ func flattenGenerateMetricsV2Processor(ctx context.Context, src *datadogV2.Obser
 		return nil
 	}
 	model := createProcessorModel(src)
-	genMetrics := &generateMetricsProcessorModel{}
+	genMetrics := &generateMetricsV2ProcessorModel{
+		EnabledMetricAggregation: types.BoolNull(),
+	}
+	if enabled, ok := src.GetEnabledMetricAggregationOk(); ok {
+		genMetrics.EnabledMetricAggregation = types.BoolValue(*enabled)
+	}
 	for _, metric := range src.GetMetrics() {
 		groupByList, _ := types.ListValueFrom(ctx, types.StringType, metric.GetGroupBy())
 		m := generatedMetricModel{
@@ -5366,9 +5390,15 @@ func flattenGenerateMetricsV2Processor(ctx context.Context, src *datadogV2.Obser
 	return model
 }
 
-func expandGenerateMetricsV2ProcessorItem(ctx context.Context, common observability_pipeline.BaseProcessorFields, src *generateMetricsProcessorModel) datadogV2.ObservabilityPipelineConfigProcessorItem {
+func expandGenerateMetricsV2ProcessorItem(ctx context.Context, common observability_pipeline.BaseProcessorFields, src *generateMetricsV2ProcessorModel) datadogV2.ObservabilityPipelineConfigProcessorItem {
 	proc := datadogV2.NewObservabilityPipelineGenerateMetricsV2ProcessorWithDefaults()
+	// The generated client currently defaults this optional field to true. Clear
+	// it so omitted Terraform configuration remains omitted from the payload.
+	proc.EnabledMetricAggregation = nil
 	common.ApplyTo(proc)
+	if !src.EnabledMetricAggregation.IsNull() && !src.EnabledMetricAggregation.IsUnknown() {
+		proc.SetEnabledMetricAggregation(src.EnabledMetricAggregation.ValueBool())
+	}
 
 	var metrics []datadogV2.ObservabilityPipelineGeneratedMetric
 	for _, m := range src.Metrics {

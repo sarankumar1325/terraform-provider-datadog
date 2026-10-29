@@ -108,12 +108,12 @@ func TestAwsWifIntakeMappingCreate(t *testing.T) {
 						responseID = ""
 					}
 					w.WriteHeader(http.StatusCreated)
-					fmt.Fprintf(w, `{"data":{"id":%q,"type":%q,"attributes":{"arn_pattern":%q}}}`,
+					fmt.Fprintf(w, `{"data":{"id":%q,"type":%q,"attributes":{"arn_pattern":%q,"par_enrollment_enabled":true}}}`,
 						responseID, test.responseType, arnPattern)
 				case request.Method == http.MethodGet && request.URL.Path == "/api/v2/cloud_auth/aws/intake_mapping/"+mappingID:
 					sawGet = true
 					if test.success {
-						fmt.Fprintf(w, `{"data":{"id":%q,"type":"aws_cloud_auth_intake_mapping","attributes":{"arn_pattern":%q}}}`, mappingID, arnPattern)
+						fmt.Fprintf(w, `{"data":{"id":%q,"type":"aws_cloud_auth_intake_mapping","attributes":{"arn_pattern":%q,"par_enrollment_enabled":true}}}`, mappingID, arnPattern)
 						return
 					}
 					w.WriteHeader(http.StatusForbidden)

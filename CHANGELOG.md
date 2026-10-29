@@ -1,3 +1,79 @@
+## 4.28.0 (October 29, 2026)
+
+### BUGFIXES
+* [datadog_dashboard_v2] Read missing bool fields as their true default  by @bonnierhee in https://github.com/DataDog/terraform-provider-datadog/pull/4402
+* [datadog_observability_pipeline] Preserve omitted metric aggregation by @20agbekodo in https://github.com/DataDog/terraform-provider-datadog/pull/4438
+### FEATURES
+* [datadog_github_oidc_persona_mapping] Add datadog_github_oidc_persona_mapping and datadog_github_oidc_intake_mapping resources by @juliendoutre in https://github.com/DataDog/terraform-provider-datadog/pull/4391
+* [datadog_observability_pipeline] Add generated metric aggregation option by @20agbekodo in https://github.com/DataDog/terraform-provider-datadog/pull/4379
+* [datadog_integration_aws_account] Add service quotas collection by @josueriosv in https://github.com/DataDog/terraform-provider-datadog/pull/4409
+
+## New Contributors
+* @gie2910 made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4411
+* @bonnierhee made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4402
+* @josueriosv made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4408
+* @ChrisHansenDatadog made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4349
+* @guillaumerob-dd made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4428
+* @skedida made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4114
+
+**Full Changelog**: https://github.com/DataDog/terraform-provider-datadog/compare/v4.27.0...v4.28.0
+
+## 4.27.0 (October 21, 2026)
+
+### BUGFIXES
+* [datadog_dashboard] Fix list_stream clustering_pattern_field_path and group_by not read into state by @lemon0333 in https://github.com/DataDog/terraform-provider-datadog/pull/4183
+* [datadog_synthetics_private_location] Preserve config across Update for imported resources by @laf-rge in https://github.com/DataDog/terraform-provider-datadog/pull/3748
+### FEATURES
+* [datadog_dashboard] Use the v2 implementation by default by @Jiawen23 in https://github.com/DataDog/terraform-provider-datadog/pull/4246
+* [datadog_rum_operation] Add resource for RUM operations by @Marsonge in https://github.com/DataDog/terraform-provider-datadog/pull/4380
+* [datadog_rum_operation_journey_link] Add resource linking RUM operations to journeys by @Marsonge in https://github.com/DataDog/terraform-provider-datadog/pull/4381
+
+## New Contributors
+* @laf-rge made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/3748
+* @Marsonge made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4380
+
+**Full Changelog**: https://github.com/DataDog/terraform-provider-datadog/compare/v4.26.0...v4.27.0
+
+## 4.26.0 (October 16, 2026)
+
+### BUGFIXES
+* [datadog_workflow_automation] Read only run_as during validation by @DMatheo in https://github.com/DataDog/terraform-provider-datadog/pull/4367
+* [datadog_synthetics_test] Fix mobile typeText crashes by @Drarig29 in https://github.com/DataDog/terraform-provider-datadog/pull/4354
+* [datadog_synthetics_test] Fix mobile monitor options without renotification by @Drarig29 in https://github.com/DataDog/terraform-provider-datadog/pull/4368
+* [datadog_synthetics_test] Fix mobile subtest state mapping by @Drarig29 in https://github.com/DataDog/terraform-provider-datadog/pull/4386
+* [datadog_governance_control] bump datadog-api-client-go/v2 to fix governance control mitigation definition decoding error by @ivanovart in https://github.com/DataDog/terraform-provider-datadog/pull/4378
+* [datadog_synthetics_test] Fix mobile step parameter panics by @Drarig29 in https://github.com/DataDog/terraform-provider-datadog/pull/4384
+* [datadog_synthetics_test] Preserve masked mobile variable values by @Drarig29 in https://github.com/DataDog/terraform-provider-datadog/pull/4385
+* [datadog_aws_cur_config] Clear account filters when block is removed by @kaankoseler in https://github.com/DataDog/terraform-provider-datadog/pull/4241
+* [datadog_synthetics_test] Fix drift on `secure` field for global variables by @Drarig29 in https://github.com/DataDog/terraform-provider-datadog/pull/4393
+* [datadog_deployment_gate] Send _metadata inside request attributes by @Aaron-9900 in https://github.com/DataDog/terraform-provider-datadog/pull/4392
+### IMPROVEMENTS
+* [datadog_deployment_gate] Add deployment rule options by @Aaron-9900 in https://github.com/DataDog/terraform-provider-datadog/pull/4372
+### FEATURES
+* [datadog_provider] Add HCP Terraform dynamic provider credentials support by @tyjet in https://github.com/DataDog/terraform-provider-datadog/pull/4321
+* [datadog_observability_pipeline] Add aggregate event-time configuration by @ArunPiduguDD in https://github.com/DataDog/terraform-provider-datadog/pull/4338
+* [datadog_on_call_team_routing_rules] Add reroute_to_team action by @Bnjis in https://github.com/DataDog/terraform-provider-datadog/pull/4373
+* [datadog_synthetics_test] Add bits_ai_auto_investigate option by @AntoineDona in https://github.com/DataDog/terraform-provider-datadog/pull/4366
+* [datadog_observability_pipelines] Add Azure data explorer destination by @petere-datadog in https://github.com/DataDog/terraform-provider-datadog/pull/4388
+* [datadog_team_notification_rule] Add recipient_email and servicenow support to team notification rules by @jcharry in https://github.com/DataDog/terraform-provider-datadog/pull/4365
+
+## New Contributors
+* @Bnjis made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4373
+
+**Full Changelog**: https://github.com/DataDog/terraform-provider-datadog/compare/v4.25.0...v4.26.0
+
+## 4.25.0 (October 7, 2026)
+
+### BUGFIXES
+* [datadog_security_findings_mute_rule] Automation pipelines require ID in updates and use different request/response schemas by @BusyBeaver-42 in https://github.com/DataDog/terraform-provider-datadog/pull/4219
+### FEATURES
+* [datadog_aws_wif_identity_mapping] [WIF-91] Add AWS WIF identity mappings by @devand123 in https://github.com/DataDog/terraform-provider-datadog/pull/4234
+
+## New Contributors
+* @devand123 made their first contribution in https://github.com/DataDog/terraform-provider-datadog/pull/4234
+
+**Full Changelog**: https://github.com/DataDog/terraform-provider-datadog/compare/v4.24.0...v4.25.0
+
 ## 4.24.0 (October 2, 2026)
 
 ### BUGFIXES
