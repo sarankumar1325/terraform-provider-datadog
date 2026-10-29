@@ -101,8 +101,8 @@ func (r *awsWifIntakeMappingResource) Create(ctx context.Context, request resour
 		state.ArnPattern.ValueString(),
 	)
 	data := datadogV2.NewAWSCloudAuthIntakeMappingCreateData(
-		datadogV2.AWSCLOUDAUTHINTAKEMAPPINGTYPE_AWS_CLOUD_AUTH_INTAKE_MAPPING,
 		*attributes,
+		datadogV2.AWSCLOUDAUTHINTAKEMAPPINGTYPE_AWS_CLOUD_AUTH_INTAKE_MAPPING,
 	)
 	body := datadogV2.NewAWSCloudAuthIntakeMappingCreateRequest(*data)
 
