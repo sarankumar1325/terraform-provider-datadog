@@ -73,7 +73,7 @@ func TestAwsWifIntakeMappingCreate(t *testing.T) {
 				requests.Add(1)
 				w.Header().Set("Content-Type", "application/json")
 				switch {
-				case request.Method == http.MethodPost && request.URL.Path == "/api/v2/cloud_auth/aws/intake_mapping":
+				case request.Method == http.MethodPost && request.URL.Path == "/api/v2/wif/aws/intake_mapping":
 					var body struct {
 						Data struct {
 							Type       string            `json:"type"`
@@ -110,7 +110,7 @@ func TestAwsWifIntakeMappingCreate(t *testing.T) {
 					w.WriteHeader(http.StatusCreated)
 					fmt.Fprintf(w, `{"data":{"id":%q,"type":%q,"attributes":{"arn_pattern":%q,"par_enrollment_enabled":true}}}`,
 						responseID, test.responseType, arnPattern)
-				case request.Method == http.MethodGet && request.URL.Path == "/api/v2/cloud_auth/aws/intake_mapping/"+mappingID:
+				case request.Method == http.MethodGet && request.URL.Path == "/api/v2/wif/aws/intake_mapping/"+mappingID:
 					sawGet = true
 					if test.success {
 						fmt.Fprintf(w, `{"data":{"id":%q,"type":"aws_cloud_auth_intake_mapping","attributes":{"arn_pattern":%q,"par_enrollment_enabled":true}}}`, mappingID, arnPattern)
@@ -219,7 +219,7 @@ func TestAwsWifIntakeMappingRead(t *testing.T) {
 			defer cancel()
 			var requests atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-				if request.Method != http.MethodGet || request.URL.Path != "/api/v2/cloud_auth/aws/intake_mapping/mapping-id" {
+				if request.Method != http.MethodGet || request.URL.Path != "/api/v2/wif/aws/intake_mapping/mapping-id" {
 					t.Errorf("unexpected request: %s %s", request.Method, request.URL.Path)
 				}
 				index := min(int(requests.Add(1))-1, len(tc.statuses)-1)
@@ -277,7 +277,7 @@ func TestAwsWifIntakeMappingDelete(t *testing.T) {
 	for _, status := range []int{http.StatusNoContent, http.StatusNotFound, http.StatusForbidden, http.StatusInternalServerError} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				if req.Method != http.MethodDelete || req.URL.Path != "/api/v2/cloud_auth/aws/intake_mapping/mapping-id" {
+				if req.Method != http.MethodDelete || req.URL.Path != "/api/v2/wif/aws/intake_mapping/mapping-id" {
 					t.Errorf("unexpected request: %s %s", req.Method, req.URL.Path)
 				}
 				w.Header().Set("Content-Type", "application/json")
